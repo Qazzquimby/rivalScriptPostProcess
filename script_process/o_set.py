@@ -1,11 +1,12 @@
 import collections
 
+
 class OrderedSet(collections.MutableSet):
 
     def __init__(self, iterable=None):
         self.end = end = []
-        end += [None, end, end]         # sentinel node for doubly linked list
-        self.map = {}                   # key --> [key, prev, next]
+        end += [None, end, end]  # sentinel node for doubly linked list
+        self.map = {}  # key --> [key, prev, next]
         if iterable is not None:
             self |= iterable
 
@@ -20,6 +21,10 @@ class OrderedSet(collections.MutableSet):
             end = self.end
             curr = end[1]
             curr[2] = end[1] = self.map[key] = [key, curr, end]
+
+    def add_all(self, keys):
+        for key in keys:
+            self.add(key)
 
     def discard(self, key):
         if key in self.map:

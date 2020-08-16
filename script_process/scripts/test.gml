@@ -7,13 +7,7 @@ make_attack()
 make_window()
 make_hitbox()
 
-
-
-
-
-
-
-
+lib_attacks
 
 // *** LIBRARY IMPORTS ***
 #define print //Version 0
