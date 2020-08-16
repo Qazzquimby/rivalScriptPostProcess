@@ -11,7 +11,7 @@ lib_attacks
 
 // *** LIBRARY IMPORTS ***
 
-#define print //Version 0
+#define print // Version 0
     // Prints each parameter to console, separated by spaces.
     var _out_string = ""
     for (var i = 0; i < argument_count; i++){
@@ -20,7 +20,7 @@ lib_attacks
     }
     print_debug(_out_string)
 
-#define Map //Version 0
+#define Map // Version 0
     // Creates a mapping from each pair of arguments.
     // my_map = Map(
     //     "a", 1,
@@ -38,17 +38,17 @@ lib_attacks
     }
     return _map;
 
-#define set_state(_new_state) //Version 0
+#define set_state(_new_state) // Version 0
     // Sets the state to the given state and resets the state timer.
     state = _new_state;
     state_timer = 0;
 
-#define set_window(_new_window) //Version 0
+#define set_window(_new_window) // Version 0
     // Sets the window to the given state and resets the window timer.
     window = _new_window
     window_timer = 0
 
-#define make_attack //Version 0
+#define make_attack // Version 0
     // make_attack(_attack_name, (value_name, value)... )
     // Sets attack values for the given attack.
     // e.g. make_attack(AT_BAIR,
@@ -63,7 +63,7 @@ lib_attacks
         )
     }
 
-#define make_window //Version 0
+#define make_window // Version 0
     // make_window(_attack_name, _index, (value_name, value)... )
     // Sets window values for the given window.
     // e.g.make_window(AT_BAIR, 1,
@@ -79,7 +79,7 @@ lib_attacks
         )
     }
 
-#define make_hitbox //Version 0
+#define make_hitbox // Version 0
     // make_hitbox(_attack_name, _index, (value_name, value)... )
     // Sets hitbox values for the given hitbox.
     // e.g. make_hitbox(AT_BAIR, 1,

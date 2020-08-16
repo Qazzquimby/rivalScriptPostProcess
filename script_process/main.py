@@ -6,22 +6,28 @@ import typing as t
 from script_process.scripts import Script
 import glob
 
+
 class CharacterScriptProcessor:
     def __init__(self):
-        self.scripts = get_all_scripts()
-        self.dependencies = merge_dependencies([script.used_dependencies for script in self.scripts])
+        self.paths_to_scripts = get_paths_to_scripts()
+        self.dependencies = merge_dependencies([script.used_dependencies for script in self.paths_to_scripts.values()])
         self.update()
 
     def update(self):
         """Gets dependencies and adds them to the bottom."""
-        for script in self.scripts:
-            script.update(self.dependencies[script.path])
+        for path, dependencies in self.dependencies.items():
+            try:
+                self.paths_to_scripts[path].update(dependencies)
+            except KeyError:
+                open(path, 'w+')
+                script = Script(path)
+                script.update(dependencies)
 
 
-def get_all_scripts() -> t.List[Script]:
+def get_paths_to_scripts() -> t.List[Script]:
     paths = glob.glob('scripts/*.gml')
-    scripts = [Script(path) for path in paths]
-    return scripts
+    paths_to_scripts = {path: Script(path) for path in paths}
+    return paths_to_scripts
 
 
 def merge_dependencies(dependency_trees: t.List[t.Dict[str, script_process.dependencies.Dependency]]):
@@ -30,7 +36,6 @@ def merge_dependencies(dependency_trees: t.List[t.Dict[str, script_process.depen
         for path, dependencies in dependency_tree.items():
             merged[path].add_all(dependencies)
     return merged
-
 
 
 if __name__ == '__main__':
