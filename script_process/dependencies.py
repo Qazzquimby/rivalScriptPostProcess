@@ -4,9 +4,6 @@ import typing as t
 
 from script_process.o_set import OrderedSet
 
-if t.TYPE_CHECKING:
-    from script_process.scripts import Script
-
 
 class Dependency(abc.ABC):
     def __init__(self, name: str, depends: t.Optional[OrderedSet], gml: str, pattern: str, script_path: str = None):
@@ -73,7 +70,7 @@ class Init(Dependency):
             name=name,
             depends=depends,
             gml=self._init_gml(name, docs, gml),
-            pattern=f'(^|\W){name}(\W|$)',
+            pattern=fr'(^|\W){name}(\W|$)',
             script_path=script_path
         )
 
