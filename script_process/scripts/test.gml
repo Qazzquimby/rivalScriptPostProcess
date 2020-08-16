@@ -10,6 +10,7 @@ make_hitbox()
 lib_attacks
 
 // *** LIBRARY IMPORTS ***
+
 #define print //Version 0
     // Prints each parameter to console, separated by spaces.
     var _out_string = ""

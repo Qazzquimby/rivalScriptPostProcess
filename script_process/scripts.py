@@ -54,13 +54,20 @@ class Script:
         open(self.path, 'w').write(new_gml)
 
 
-def generate_import_gml(dependencies: script_process.o_set.OrderedSet) -> str:  # todo move this to Dependency subs
-    dependency_gml = '\n\n'.join([dependency.gml for dependency in dependencies])
-    import_gml = f"{script_process.styling.IMPORT_HEADER}\n" + dependency_gml
+def generate_import_gml(dependencies: script_process.o_set.OrderedSet) -> str:
+    init_gml = generate_gml_for_dependency_type(dependencies, script_process.dependencies.Init)
+    define_gml = generate_gml_for_dependency_type(dependencies, script_process.dependencies.Define)
+    import_gml = f"{script_process.styling.IMPORT_HEADER}\n" + init_gml + "\n" + define_gml
     return import_gml
 
 
-INIT_PATH = 'scripts/init.gml'
+def generate_gml_for_dependency_type(
+        dependencies: script_process.o_set.OrderedSet,
+        dependency_type: t.Type[script_process.dependencies.Dependency]
+) -> str:
+    dependencies = [dependency for dependency in dependencies if isinstance(dependency, dependency_type)]
+    gml = '\n\n'.join([depend.gml for depend in dependencies])
+    return gml
 
 
 def uses_dependency(gml: str, dependency: script_process.dependencies.Dependency) -> bool:

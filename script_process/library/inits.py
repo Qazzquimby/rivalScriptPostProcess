@@ -1,6 +1,6 @@
 from script_process.dependencies import Init
 
-make_attack = Init(
+lib_attacks = Init(
     name="lib_attacks",
     docs="""\
     Lists attack IDs.
@@ -27,3 +27,7 @@ make_attack = Init(
             AT_TAUNT
         ]"""
 )
+
+DEPENDENCIES = [
+    lib_attacks,
+]

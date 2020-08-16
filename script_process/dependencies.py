@@ -56,7 +56,7 @@ class Define(Dependency):
         head = f"#define {name}{param_string}"
         docs = textwrap.indent(textwrap.dedent(docs), '    // ')
         gml = textwrap.indent(textwrap.dedent(gml), '    ')
-        final = f"{head} //Version {version}\n{docs}\n{gml}"
+        final = f"{head} // Version {version}\n{docs}\n{gml}"
         return textwrap.dedent(final).strip()
 
 
@@ -67,18 +67,19 @@ class Init(Dependency):
             docs: str,
             gml: str,
             depends: t.List[Dependency] = None,
-            script_path: str = 'scripts/init.gml'
+            script_path: str = 'scripts\\init.gml'
     ):
         super().__init__(
             name=name,
             depends=depends,
             gml=self._init_gml(name, docs, gml),
-            pattern=fr'(^|\W){name}(\W|$)',
+            pattern=f'(^|\W){name}(\W|$)',
             script_path=script_path
         )
 
     @staticmethod
     def _init_gml(name, docs, gml):
-        docs = textwrap.indent(textwrap.dedent(docs), '// ')
+        docs = textwrap.indent(textwrap.dedent(docs), '// ').strip()
+        gml = textwrap.dedent(gml)
         final = f"{docs}\n{name} = {gml}"
         return textwrap.dedent(final).strip()

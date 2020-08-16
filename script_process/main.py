@@ -34,7 +34,5 @@ def merge_dependencies(dependency_trees: t.List[t.Dict[str, script_process.depen
 
 
 if __name__ == '__main__':
-    # process_script('scripts/test.gml')
-    # print('debug')
     CharacterScriptProcessor()
     print('debug')
