@@ -24,7 +24,7 @@ class CharacterScriptProcessor:
                 script.update(dependencies)
 
 
-def get_paths_to_scripts() -> t.List[Script]:
+def get_paths_to_scripts() -> t.Dict[str, Script]:
     paths = glob.glob('scripts/*.gml')
     paths_to_scripts = {path: Script(path) for path in paths}
     return paths_to_scripts
