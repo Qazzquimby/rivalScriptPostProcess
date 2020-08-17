@@ -61,8 +61,8 @@ class Init(Dependency):
     def __init__(
             self,
             name: str,
-            docs: str,
             gml: str,
+            docs: str = "",
             depends: t.List[Dependency] = None,
             script_path: str = 'scripts\\init.gml'
     ):
