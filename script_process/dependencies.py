@@ -6,18 +6,30 @@ from script_process.o_set import OrderedSet
 
 
 class Dependency(abc.ABC):
-    def __init__(self, name: str, depends: t.Optional[OrderedSet], gml: str, pattern: str, script_path: str = None):
+    def __init__(self,
+                 name: str,
+                 depends: t.Optional[OrderedSet],
+                 gml: str,
+                 use_pattern: str,
+                 give_pattern: str,
+                 script_path: str = None):
         self.name = name
         if depends is None:
             depends = OrderedSet()
         self.depends = OrderedSet(depends)
         self.gml = gml
-        self.pattern = pattern
+        self.use_pattern = use_pattern
+        self.give_pattern = give_pattern
         self.script_path = script_path
 
     def __str__(self):
         return self.name
 
+    def __eq__(self, other):
+        return self.name == other.name
+
+    def __hash__(self):
+        return hash(self.name)
 
 ScriptDependencies = t.Dict["Script", OrderedSet]
 
@@ -37,7 +49,8 @@ class Define(Dependency):
             name=name,
             depends=depends,
             gml=self._init_gml(name, params, version, docs, gml),
-            pattern=fr'(^|\W){name}\(',
+            use_pattern=fr'(^|\W){name}\(',
+            give_pattern=fr'#define(\s)*{name}(\W|$)',
             script_path=script_path
         )
 
@@ -70,7 +83,8 @@ class Init(Dependency):
             name=name,
             depends=depends,
             gml=self._init_gml(name, docs, gml),
-            pattern=fr'(^|\W){name}(\W|$)',
+            use_pattern=fr'(^|\W){name}(\W|$)',
+            give_pattern=fr'(^|\W){name}(\s)*=',
             script_path=script_path
         )
 

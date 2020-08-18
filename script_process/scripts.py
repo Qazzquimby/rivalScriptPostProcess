@@ -15,16 +15,17 @@ class Script:
         self.path = path
         self.code_gml, self.define_gml = self._init_gml()
         self.used_dependencies = self.init_used_dependencies()
+        self.given_dependencies = self.init_given_dependencies()
 
     def _init_gml(self) -> t.Tuple[str, str]:
         text = open(self.path).read()
 
         headers = (script_process.styling.CODE, script_process.styling.DEFINES_AND_MACROS)
         for header in headers:
-            pattern = rf"{header[0]}(.*){header[1]}"
+            pattern = rf"{re.escape(header[0])}(.|\n)*{re.escape(header[1])}"
             text = re.sub(pattern, '', text)
 
-        splits = text.split('#')
+        splits = text.split('#', 1)
         code_gml = splits[0].strip()
         try:
             define_gml = '#' + splits[1].strip()
@@ -33,24 +34,31 @@ class Script:
 
         return code_gml, define_gml
 
-    def init_used_dependencies(self) -> "script_process.dependencies.ScriptDependencies":
-        used = collections.defaultdict(script_process.o_set.OrderedSet)
-
-        for dependency in script_process.library.DEPENDENCIES:
-            if uses_dependency(self.code_gml + self.define_gml, dependency):
-
-                used[self.get_dependency_script(dependency)].add(dependency)
-                for further_depend in dependency.depends:
-                    used[self.get_dependency_script(further_depend)].add(further_depend)
-        return used
-
     def get_dependency_script(self, dependency: script_process.dependencies.Dependency):
         script_path = dependency.script_path
         if script_path is None:
             script_path = self.path
         return script_path
 
+    def init_given_dependencies(self) -> "script_process.dependencies.ScriptDependencies":
+        return self._get_dependencies_that_match_pattern(lambda dependency: dependency.give_pattern)
+
+    def init_used_dependencies(self) -> "script_process.dependencies.ScriptDependencies":
+        return self._get_dependencies_that_match_pattern(lambda dependency: dependency.use_pattern)
+
+    def _get_dependencies_that_match_pattern(self, pattern_getter) -> "script_process.dependencies.ScriptDependencies":
+        dependencies = collections.defaultdict(script_process.o_set.OrderedSet)
+
+        for dependency in script_process.library.DEPENDENCIES:
+            pattern = pattern_getter(dependency)
+            if re.search(pattern, self.code_gml + self.define_gml):
+                dependencies[self.get_dependency_script(dependency)].add(dependency)
+                for further_depend in dependency.depends:
+                    dependencies[self.get_dependency_script(further_depend)].add(further_depend)
+        return dependencies
+
     def update(self, dependencies: script_process.o_set.OrderedSet):
+        dependencies.discard_all(self.given_dependencies[self.path])
         import_code_gml = generate_init_gml(dependencies)
         import_define_gml = generate_define_gml(dependencies)
 
@@ -80,10 +88,13 @@ def generate_gml_for_dependency_type(
         headers: t.Tuple[str, str]
 ) -> str:
     dependencies = [dependency for dependency in dependencies if isinstance(dependency, dependency_type)]
-    contents = '\n\n'.join([depend.gml for depend in dependencies])
-    gml = f"{headers[0]}\n{contents}\n{headers[1]}"
-    return gml
+    if dependencies:
+        contents = '\n\n'.join([depend.gml for depend in dependencies])
+        gml = f"{headers[0]}\n{contents}\n{headers[1]}"
+        return gml
+    else:
+        return ''
 
 
 def uses_dependency(gml: str, dependency: script_process.dependencies.Dependency) -> bool:
-    return re.search(dependency.pattern, gml) is not None
+    return re.search(dependency.use_pattern, gml) is not None

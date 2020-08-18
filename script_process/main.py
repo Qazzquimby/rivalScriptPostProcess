@@ -19,7 +19,7 @@ class CharacterScriptProcessor:
             try:
                 self.paths_to_scripts[path].update(dependencies)
             except KeyError:
-                open(path, 'w+')
+                open(path, 'w+')  # makes empty file
                 script = Script(path)
                 script.update(dependencies)
 

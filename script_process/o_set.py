@@ -32,6 +32,10 @@ class OrderedSet(collections.MutableSet):
             prev[2] = nxt
             nxt[1] = prev
 
+    def discard_all(self, keys):
+        for key in keys:
+            self.discard(key)
+
     def __iter__(self):
         end = self.end
         curr = end[2]
