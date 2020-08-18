@@ -13,19 +13,31 @@ if t.TYPE_CHECKING:
 class Script:
     def __init__(self, path: str):
         self.path = path
-        self.gml = self._init_gml()
+        self.code_gml, self.define_gml = self._init_gml()
         self.used_dependencies = self.init_used_dependencies()
 
-    def _init_gml(self) -> str:
+    def _init_gml(self) -> t.Tuple[str, str]:
         text = open(self.path).read()
-        gml = text.split(script_process.styling.IMPORT_HEADER)[0].strip()
-        return gml
+
+        headers = (script_process.styling.CODE, script_process.styling.DEFINES_AND_MACROS)
+        for header in headers:
+            pattern = rf"{header[0]}(.*){header[1]}"
+            text = re.sub(pattern, '', text)
+
+        splits = text.split('#')
+        code_gml = splits[0].strip()
+        try:
+            define_gml = '#' + splits[1].strip()
+        except IndexError:
+            define_gml = ''
+
+        return code_gml, define_gml
 
     def init_used_dependencies(self) -> "script_process.dependencies.ScriptDependencies":
         used = collections.defaultdict(script_process.o_set.OrderedSet)
 
         for dependency in script_process.library.DEPENDENCIES:
-            if uses_dependency(self.gml, dependency):
+            if uses_dependency(self.code_gml + self.define_gml, dependency):
 
                 used[self.get_dependency_script(dependency)].add(dependency)
                 for further_depend in dependency.depends:
@@ -39,24 +51,37 @@ class Script:
         return script_path
 
     def update(self, dependencies: script_process.o_set.OrderedSet):
-        import_gml = generate_import_gml(dependencies=dependencies)
-        new_gml = '\n\n'.join([self.gml, import_gml])
+        import_code_gml = generate_init_gml(dependencies)
+        import_define_gml = generate_define_gml(dependencies)
+
+        new_gml = '\n\n'.join([self.code_gml, import_code_gml, self.define_gml, import_define_gml])
         open(self.path, 'w').write(new_gml)
 
 
-def generate_import_gml(dependencies: script_process.o_set.OrderedSet) -> str:
-    init_gml = generate_gml_for_dependency_type(dependencies, script_process.dependencies.Init)
-    define_gml = generate_gml_for_dependency_type(dependencies, script_process.dependencies.Define)
-    import_gml = f"{script_process.styling.IMPORT_HEADER}\n" + init_gml + "\n" + define_gml
-    return import_gml
+def generate_init_gml(dependencies: script_process.o_set.OrderedSet) -> str:
+    return generate_gml_for_dependency_type(
+        dependencies=dependencies,
+        dependency_type=script_process.dependencies.Init,
+        headers=script_process.styling.CODE
+    )
+
+
+def generate_define_gml(dependencies: script_process.o_set.OrderedSet) -> str:
+    return generate_gml_for_dependency_type(
+        dependencies=dependencies,
+        dependency_type=script_process.dependencies.Define,
+        headers=script_process.styling.DEFINES_AND_MACROS
+    )
 
 
 def generate_gml_for_dependency_type(
         dependencies: script_process.o_set.OrderedSet,
-        dependency_type: t.Type[script_process.dependencies.Dependency]
+        dependency_type: t.Type[script_process.dependencies.Dependency],
+        headers: t.Tuple[str, str]
 ) -> str:
     dependencies = [dependency for dependency in dependencies if isinstance(dependency, dependency_type)]
-    gml = '\n\n'.join([depend.gml for depend in dependencies])
+    contents = '\n\n'.join([depend.gml for depend in dependencies])
+    gml = f"{headers[0]}\n{contents}\n{headers[1]}"
     return gml
 
 

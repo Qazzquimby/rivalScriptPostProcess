@@ -1,4 +1,4 @@
-import script_process.library.data_structures
+from . import data_structures
 from script_process.dependencies import Init, Define
 
 lib_state_to_sprite_string = Init(
@@ -40,7 +40,7 @@ lib_state_to_sprite_string = Init(
         PS_SPAWN, "intro",
         PS_RESPAWN, "respawn"
     );""",
-    depends=[script_process.library.data_structures.Map]
+    depends=[data_structures.Map]
 )
 
 lib_attack_to_sprite_string = Init(
@@ -67,7 +67,7 @@ lib_attack_to_sprite_string = Init(
         AT_DSPECIAL_AIR, "dspecial_air",
         AT_USPECIAL, "uspecial"
     );""",
-    depends=[script_process.library.data_structures.Map]
+    depends=[data_structures.Map]
 )
 
 lib_get_current_sprite = Define(
