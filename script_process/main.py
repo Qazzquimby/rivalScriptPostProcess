@@ -1,5 +1,4 @@
 import collections
-
 import script_process.dependencies
 import script_process.o_set
 import typing as t
@@ -26,6 +25,7 @@ class CharacterScriptProcessor:
 
 def get_paths_to_scripts() -> t.Dict[str, Script]:
     paths = glob.glob('scripts/*.gml')
+    log.debug(f"paths: {paths}")
     paths_to_scripts = {path: Script(path) for path in paths}
     return paths_to_scripts
 
@@ -39,5 +39,6 @@ def merge_dependencies(dependency_trees: t.List[t.Dict[str, script_process.depen
 
 
 if __name__ == '__main__':
+    log.info("Starting")
     CharacterScriptProcessor()
-    print('debug')
+    log.info("Finished")

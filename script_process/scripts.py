@@ -1,7 +1,6 @@
 import collections
 import re
 
-import script_process.library
 import script_process.o_set
 import script_process.styling
 import typing as t
@@ -49,7 +48,7 @@ class Script:
     def _get_dependencies_that_match_pattern(self, pattern_getter) -> "script_process.dependencies.ScriptDependencies":
         dependencies = collections.defaultdict(script_process.o_set.OrderedSet)
 
-        for dependency in script_process.library.DEPENDENCIES:
+        for dependency in script_process.dependencies.get_dependencies_from_library():
             pattern = pattern_getter(dependency)
             if re.search(pattern, self.code_gml + self.define_gml):
                 dependencies[self.get_dependency_script(dependency)].add(dependency)

@@ -1,4 +1,7 @@
 import abc
+import functools
+import glob
+import inspect
 import textwrap
 import typing as t
 
@@ -30,6 +33,7 @@ class Dependency(abc.ABC):
 
     def __hash__(self):
         return hash(self.name)
+
 
 ScriptDependencies = t.Dict["Script", OrderedSet]
 
@@ -94,3 +98,18 @@ class Init(Dependency):
         gml = textwrap.dedent(gml)
         final = f"{docs}\n{name} = {gml}"
         return textwrap.dedent(final).strip()
+
+
+@functools.lru_cache()
+def get_dependencies_from_library():
+    plugin_root = "library"
+    plugin_paths = glob.glob(f"{plugin_root}/*.py")
+    library_members = set()
+    for path in plugin_paths:
+        plugin_import = path.replace('.py', '').replace('\\', '.')
+        plugin_modules = inspect.getmembers(__import__(plugin_import), inspect.ismodule)
+        for _, plugin_module in plugin_modules:
+            for member in vars(plugin_module).values():
+                if isinstance(member, Dependency):
+                    library_members.add(member)
+    return library_members
