@@ -4,6 +4,7 @@ import script_process.o_set
 import typing as t
 from script_process.scripts import Script
 import glob
+from script_process.log import log
 
 
 class CharacterScriptProcessor:
