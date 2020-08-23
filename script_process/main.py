@@ -1,4 +1,6 @@
 import collections
+import os
+
 import script_process.dependencies
 import script_process.o_set
 import typing as t
@@ -25,6 +27,7 @@ class CharacterScriptProcessor:
 
 
 def get_paths_to_scripts() -> t.Dict[str, Script]:
+    log.debug(f"cwd: {os.getcwd()}")
     paths = glob.glob('scripts/*.gml')
     log.debug(f"paths: {paths}")
     paths_to_scripts = {path: Script(path) for path in paths}
