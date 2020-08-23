@@ -4,6 +4,7 @@ import re
 import script_process.o_set
 import script_process.styling
 import typing as t
+from script_process.log import log
 
 if t.TYPE_CHECKING:
     import script_process.dependencies
@@ -15,6 +16,9 @@ class Script:
         self.code_gml, self.define_gml = self._init_gml()
         self.used_dependencies = self.init_used_dependencies()
         self.given_dependencies = self.init_given_dependencies()
+        log.info(f"Script {self.path}")
+        log.info(f"Uses {_list_dependencies(self.used_dependencies)}")
+        log.info(f"Supplies {_list_dependencies(self.given_dependencies)}\n")
 
     def _init_gml(self) -> t.Tuple[str, str]:
         text = open(self.path).read()
@@ -63,6 +67,10 @@ class Script:
 
         new_gml = '\n\n'.join([self.code_gml, import_code_gml, self.define_gml, import_define_gml])
         open(self.path, 'w').write(new_gml)
+
+
+def _list_dependencies(dependencies):
+    return [(path, [depend.name for depend in depends]) for path, depends in dependencies.items()]
 
 
 def generate_init_gml(dependencies: script_process.o_set.OrderedSet) -> str:
