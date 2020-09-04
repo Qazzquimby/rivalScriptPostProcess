@@ -28,8 +28,8 @@ class CharacterScriptProcessor:
 
 def get_paths_to_scripts() -> t.Dict[str, Script]:
     log.debug(f"cwd: {os.getcwd()}")
-    paths = glob.glob('scripts/*.gml')
-    log.debug(f"paths: {paths}")
+    paths = glob.glob('scripts/**/*.gml', recursive=True)
+    log.debug(f"paths: {paths}\n")
     paths_to_scripts = {path: Script(path) for path in paths}
     return paths_to_scripts
 

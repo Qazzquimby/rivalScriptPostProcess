@@ -1,10 +1,13 @@
+import os
+import re
+import sys
 import abc
 import functools
 import glob
 import inspect
 import textwrap
 import typing as t
-
+from script_process.log import log
 from script_process.o_set import OrderedSet
 
 
@@ -39,6 +42,8 @@ ScriptDependencies = t.Dict["Script", OrderedSet]
 
 
 class Define(Dependency):
+    IDENTIFIER_STRING = '#define'
+
     def __init__(
             self,
             name: str,
@@ -54,7 +59,7 @@ class Define(Dependency):
             depends=depends,
             gml=self._init_gml(name, params, version, docs, gml),
             use_pattern=fr'(^|\W){name}\(',
-            give_pattern=fr'#define(\s)*{name}(\W|$)',
+            give_pattern=fr'{self.IDENTIFIER_STRING}(\s)*{name}(\W|$)',
             script_path=script_path
         )
 
@@ -67,11 +72,46 @@ class Define(Dependency):
         else:
             param_string = ''
 
-        head = f"#define {name}{param_string}"
+        head = f"{Define.IDENTIFIER_STRING} {name}{param_string}"
         docs = textwrap.indent(textwrap.dedent(docs), '    // ')
         gml = textwrap.indent(textwrap.dedent(gml), '    ')
         final = f"{head} // Version {version}\n{docs}\n{gml}"
         return textwrap.dedent(final).strip()
+
+    @staticmethod
+    def from_gml(in_gml: str):
+        pattern = f"{Define.IDENTIFIER_STRING} (.+) // Version (\d+)\n((.|\n)+)"
+        name_params, version, content, _ = re.search(pattern, in_gml).groups()
+        try:
+            name, params_str = name_params.split('(')
+            params = params_str.replace(')', '').replace(' ', '').split(',')
+        except ValueError:
+            name = name_params
+            params = []
+
+        content_lines = content.split('\n')
+        doc_lines = []
+        gml_lines = []
+        is_docs = True
+        for line in content_lines:
+            if is_docs:
+                if line.replace(' ', '').replace('\t', '').startswith('//'):
+                    line = re.sub(r'//\s*', '', line)
+                    doc_lines.append(line)
+                else:
+                    is_docs = False
+            if not is_docs:
+                gml_lines.append(line)
+
+        docs = '\n'.join(doc_lines)
+        gml = '\n'.join(gml_lines)
+
+        return Define(
+            name=name,
+            params=params,
+            version=version,
+            docs=docs,
+            gml=gml)
 
 
 class Init(Dependency):
@@ -102,8 +142,14 @@ class Init(Dependency):
 
 @functools.lru_cache()
 def get_dependencies_from_library():
+    project_path = os.getcwd()  # os.path.dirname(os.path.dirname(__file__))
+    log.info(f"Project path: {project_path}")
+    sys.path.append(project_path)
+    log.info(f"Sys path: {sys.path}")
     plugin_root = "library"
     plugin_paths = glob.glob(f"{plugin_root}/*.py")
+    log.info(f"Plugin paths: {plugin_paths}")
+
     library_members = set()
     for path in plugin_paths:
         plugin_import = path.replace('.py', '').replace('\\', '.')
@@ -112,4 +158,11 @@ def get_dependencies_from_library():
             for member in vars(plugin_module).values():
                 if isinstance(member, Dependency):
                     library_members.add(member)
+    log.info(f"Library contents: {[member.name for member in library_members]}\n")
     return library_members
+
+
+def make_dependency(in_gml: str) -> Dependency:
+    if in_gml.startswith(Define.IDENTIFIER_STRING):
+        return Define.from_gml(in_gml)
+    raise ValueError("Given gml doesn't look like a support dependency.")
