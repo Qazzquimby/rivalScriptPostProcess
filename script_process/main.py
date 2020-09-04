@@ -11,7 +11,7 @@ from script_process.log import log
 
 class CharacterScriptProcessor:
     def __init__(self):
-        self.paths_to_scripts = get_paths_to_scripts()
+        self.paths_to_scripts, self.custom_imports = get_paths_to_scripts_and_custom_imports()
         self.dependencies = merge_dependencies([script.used_dependencies for script in self.paths_to_scripts.values()])
         self.update()
 
@@ -26,12 +26,19 @@ class CharacterScriptProcessor:
                 script.update(dependencies)
 
 
-def get_paths_to_scripts() -> t.Dict[str, Script]:
+def get_paths_to_scripts_and_custom_imports() -> t.Tuple[t.Dict[str, Script], t.Optional[Script]]:
     log.debug(f"cwd: {os.getcwd()}")
     paths = glob.glob('scripts/**/*.gml', recursive=True)
     log.debug(f"paths: {paths}\n")
     paths_to_scripts = {path: Script(path) for path in paths}
-    return paths_to_scripts
+
+    custom_imports = None
+    for path in paths_to_scripts.keys():
+        if path.endswith('imports.gml'):
+            custom_imports = paths_to_scripts.pop(path)
+        break
+
+    return paths_to_scripts, custom_imports
 
 
 def merge_dependencies(dependency_trees: t.List[t.Dict[str, script_process.dependencies.Dependency]]):

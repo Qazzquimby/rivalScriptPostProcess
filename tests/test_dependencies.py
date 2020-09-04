@@ -37,6 +37,7 @@ def test_create():
     sut = make_dependency(in_gml)
     assert sut.gml == in_gml
 
+
 def test_create_with_params():
     in_gml = textwrap.dedent("""\
     #define name(_param0, _param1) // Version 0
@@ -49,3 +50,44 @@ def test_create_with_params():
     sut = make_dependency(in_gml)
     assert sut.gml == in_gml
 
+
+def test_create_with_no_version_given():
+    in_gml = textwrap.dedent("""\
+    #define name
+        // docs0
+        // docs1
+    
+        gml0
+        gml1""")
+
+    out_gml = textwrap.dedent("""\
+        #define name // Version 0
+            // docs0
+            // docs1
+        
+            gml0
+            gml1""")
+
+    sut = make_dependency(in_gml)
+    assert sut.gml == out_gml
+
+
+def test_create_with_dependency():
+    in_gml = textwrap.dedent("""\
+    #define name
+        // docs0
+        // docs1
+    
+        gml0
+        gml1""")
+
+    out_gml = textwrap.dedent("""\
+        #define name // Version 0
+            // docs0
+            // docs1
+        
+            gml0
+            gml1""")
+
+    sut = make_dependency(in_gml)
+    assert sut.gml == out_gml

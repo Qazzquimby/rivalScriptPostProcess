@@ -80,16 +80,41 @@ class Define(Dependency):
 
     @staticmethod
     def from_gml(in_gml: str):
-        pattern = f"{Define.IDENTIFIER_STRING} (.+) // Version (\d+)\n((.|\n)+)"
-        name_params, version, content, _ = re.search(pattern, in_gml).groups()
-        try:
+        name_params_version, content = in_gml.split('\n', 1)
+        name, params, version = Define._extract_name_params_version(name_params_version)
+
+        docs, gml = Define._extract_docs_gml(content)
+
+        return Define(
+            name=name,
+            params=params,
+            version=version,
+            docs=docs,
+            gml=gml)
+
+    @staticmethod
+    def _extract_name_params_version(name_params_version_line: str) -> t.Tuple[str, t.List[str], int]:
+        name_params_version = name_params_version_line.replace(Define.IDENTIFIER_STRING, '').strip()
+        has_version = '//' in name_params_version
+        if has_version:
+            name_params, version_str = [section.strip() for section in name_params_version.split('//')]
+            version = int(re.findall(r'\d+', version_str)[0])
+        else:
+            name_params = name_params_version
+            version = 0
+
+        has_params = '(' in name_params
+        if has_params:
             name, params_str = name_params.split('(')
             params = params_str.replace(')', '').replace(' ', '').split(',')
-        except ValueError:
+        else:
             name = name_params
             params = []
+        return name, params, version
 
-        content_lines = content.split('\n')
+    @staticmethod
+    def _extract_docs_gml(docs_gml: str) -> t.Tuple[str, str]:
+        content_lines = docs_gml.split('\n')
         doc_lines = []
         gml_lines = []
         is_docs = True
@@ -105,13 +130,7 @@ class Define(Dependency):
 
         docs = '\n'.join(doc_lines)
         gml = '\n'.join(gml_lines)
-
-        return Define(
-            name=name,
-            params=params,
-            version=version,
-            docs=docs,
-            gml=gml)
+        return docs, gml
 
 
 class Init(Dependency):
@@ -158,8 +177,22 @@ def get_dependencies_from_library():
             for member in vars(plugin_module).values():
                 if isinstance(member, Dependency):
                     library_members.add(member)
+
+    custom_imports = get_imports_gml()
+    log.info(f"Custom imports: {[member.name for member in custom_imports]}\n")
+
+    library_members.update(custom_imports)
     log.info(f"Library contents: {[member.name for member in library_members]}\n")
     return library_members
+
+
+def get_imports_gml():
+    custom_imports_text = open('scripts/imports.gml').read()
+
+    import_texts = ['#' + import_text for import_text in custom_imports_text.split('#') if len(import_text) > 0]
+    dependencies = [make_dependency(import_text) for import_text in import_texts]
+
+    return set(dependencies)
 
 
 def make_dependency(in_gml: str) -> Dependency:
