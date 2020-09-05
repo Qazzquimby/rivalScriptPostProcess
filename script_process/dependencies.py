@@ -79,18 +79,23 @@ class Define(Dependency):
         return textwrap.dedent(final).strip()
 
     @staticmethod
-    def from_gml(in_gml: str):
+    def from_gml(in_gml: str, dependencies=None):
+        if dependencies is None:
+            dependencies = []
+
         name_params_version, content = in_gml.split('\n', 1)
         name, params, version = Define._extract_name_params_version(name_params_version)
 
         docs, gml = Define._extract_docs_gml(content)
+        used_dependencies = [dependency for dependency in dependencies if re.search(dependency.use_pattern, gml)]
 
         return Define(
             name=name,
             params=params,
             version=version,
             docs=docs,
-            gml=gml)
+            gml=gml,
+            depends=used_dependencies)
 
     @staticmethod
     def _extract_name_params_version(name_params_version_line: str) -> t.Tuple[str, t.List[str], int]:
@@ -178,24 +183,22 @@ def get_dependencies_from_library():
                 if isinstance(member, Dependency):
                     library_members.add(member)
 
-    custom_imports = get_imports_gml()
-    log.info(f"Custom imports: {[member.name for member in custom_imports]}\n")
-
-    library_members.update(custom_imports)
+    add_custom_dependencies(library_members)
     log.info(f"Library contents: {[member.name for member in library_members]}\n")
     return library_members
 
 
-def get_imports_gml():
+def add_custom_dependencies(lib_dependencies):
     custom_imports_text = open('scripts/imports.gml').read()
 
     import_texts = ['#' + import_text for import_text in custom_imports_text.split('#') if len(import_text) > 0]
-    dependencies = [make_dependency(import_text) for import_text in import_texts]
 
-    return set(dependencies)
+    for import_text in import_texts:
+        new_dependency = make_dependency(import_text, lib_dependencies)
+        lib_dependencies.add(new_dependency)
 
 
-def make_dependency(in_gml: str) -> Dependency:
+def make_dependency(in_gml: str, dependencies=None) -> Dependency:
     if in_gml.startswith(Define.IDENTIFIER_STRING):
-        return Define.from_gml(in_gml)
+        return Define.from_gml(in_gml, dependencies)
     raise ValueError("Given gml doesn't look like a support dependency.")
