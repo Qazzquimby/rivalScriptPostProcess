@@ -1,4 +1,5 @@
 import collections
+import os
 import re
 
 import script_process.o_set
@@ -21,7 +22,7 @@ class Script:
         log.info(f"Supplies {_list_dependencies(self.given_dependencies)}\n")
 
     def _init_gml(self) -> t.Tuple[str, str]:
-        text = open(self.path).read()
+        text = open(self.path, errors='ignore').read()
 
         headers = (script_process.styling.CODE, script_process.styling.DEFINES_AND_MACROS)
         for header in headers:
@@ -37,10 +38,14 @@ class Script:
 
         return code_gml, define_gml
 
-    def get_dependency_script(self, dependency: script_process.dependencies.Dependency):
+    def get_dependency_script(self, dependency: script_process.dependencies.Dependency, root_path: str):
         script_path = dependency.script_path
         if script_path is None:
             script_path = self.path
+
+        if not os.path.isabs(script_path):
+            script_path = root_path + script_path
+
         return script_path
 
     def init_given_dependencies(self) -> "script_process.dependencies.ScriptDependencies":
@@ -51,13 +56,14 @@ class Script:
 
     def _get_dependencies_that_match_pattern(self, pattern_getter) -> "script_process.dependencies.ScriptDependencies":
         dependencies = collections.defaultdict(script_process.o_set.OrderedSet)
+        root_path = self.path.split('scripts')[0]
 
         for dependency in script_process.dependencies.get_dependencies_from_library():
             pattern = pattern_getter(dependency)
             if re.search(pattern, self.code_gml + self.define_gml):
-                dependencies[self.get_dependency_script(dependency)].add(dependency)
+                dependencies[self.get_dependency_script(dependency, root_path)].add(dependency)
                 for further_depend in dependency.depends:
-                    dependencies[self.get_dependency_script(further_depend)].add(further_depend)
+                    dependencies[self.get_dependency_script(further_depend, root_path)].add(further_depend)
         return dependencies
 
     def update(self, dependencies: script_process.o_set.OrderedSet):
@@ -70,7 +76,7 @@ class Script:
 
 
 def _list_dependencies(dependencies):
-    return [(path, [depend.name for depend in depends]) for path, depends in dependencies.items()]
+    return [(path, [depend.file_name for depend in depends]) for path, depends in dependencies.items()]
 
 
 def generate_init_gml(dependencies: script_process.o_set.OrderedSet) -> str:
