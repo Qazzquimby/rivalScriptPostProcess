@@ -32,7 +32,7 @@ class Dependency(abc.ABC):
         return self.name
 
     def __eq__(self, other):
-        return self.name == other.name
+        return self.name == other.file_name
 
     def __hash__(self):
         return hash(self.name)
@@ -43,6 +43,103 @@ ScriptDependencies = t.Dict["Script", OrderedSet]
 
 class Define(Dependency):
     IDENTIFIER_STRING = '#define'
+
+    def __init__(
+            self,
+            name: str,
+            version: int,
+            docs: str,
+            gml: str,
+            depends: t.List[Dependency] = None,
+            params: t.List[str] = None,
+            script_path: str = None
+    ):
+        super().__init__(
+            name=name,
+            depends=depends,
+            gml=self._init_gml(name, params, version, docs, gml),
+            use_pattern=fr'(^|\W){name}\(',
+            give_pattern=fr'{self.IDENTIFIER_STRING}(\s)*{name}(\W|$)',
+            script_path=script_path
+        )
+
+    @staticmethod
+    def _init_gml(name, params, version, docs, gml):
+        if params is None:
+            params = []
+        if len(params) > 0:
+            param_string = f"({', '.join(params)})"
+        else:
+            param_string = ''
+
+        head = f"{Define.IDENTIFIER_STRING} {name}{param_string}"
+        docs = textwrap.indent(textwrap.dedent(docs), '    // ')
+        gml = textwrap.indent(textwrap.dedent(gml), '    ')
+        final = f"{head} // Version {version}\n{docs}\n{gml}"
+        return textwrap.dedent(final).strip()
+
+    @staticmethod
+    def from_gml(in_gml: str, dependencies=None):
+        if dependencies is None:
+            dependencies = []
+
+        name_params_version, content = in_gml.split('\n', 1)
+        name, params, version = Define._extract_name_params_version(name_params_version)
+
+        docs, gml = Define._extract_docs_gml(content)
+        used_dependencies = [dependency for dependency in dependencies if re.search(dependency.use_pattern, gml)]
+
+        return Define(
+            name=name,
+            params=params,
+            version=version,
+            docs=docs,
+            gml=gml,
+            depends=used_dependencies)
+
+    @staticmethod
+    def _extract_name_params_version(name_params_version_line: str) -> t.Tuple[str, t.List[str], int]:
+        name_params_version = name_params_version_line.replace(Define.IDENTIFIER_STRING, '').strip()
+        has_version = '//' in name_params_version
+        if has_version:
+            name_params, version_str = [section.strip() for section in name_params_version.split('//')]
+            version = int(re.findall(r'\d+', version_str)[0])
+        else:
+            name_params = name_params_version
+            version = 0
+
+        has_params = '(' in name_params
+        if has_params:
+            name, params_str = name_params.split('(')
+            params = params_str.replace(')', '').replace(' ', '').split(',')
+        else:
+            name = name_params
+            params = []
+        return name, params, version
+
+    @staticmethod
+    def _extract_docs_gml(docs_gml: str) -> t.Tuple[str, str]:
+        content_lines = docs_gml.split('\n')
+        doc_lines = []
+        gml_lines = []
+        is_docs = True
+        for line in content_lines:
+            if is_docs:
+                if line.replace(' ', '').replace('\t', '').startswith('//'):
+                    line = re.sub(r'//\s*', '', line)
+                    doc_lines.append(line)
+                else:
+                    is_docs = False
+            if not is_docs:
+                gml_lines.append(line)
+
+        docs = '\n'.join(doc_lines)
+        gml = '\n'.join(gml_lines)
+        return docs, gml
+
+
+class Macro(Dependency):
+    IDENTIFIER_STRING = '#macro'
 
     def __init__(
             self,
@@ -189,9 +286,14 @@ def get_dependencies_from_library():
 
 
 def add_custom_dependencies(lib_dependencies):
-    custom_imports_text = open('scripts/imports.gml').read()
+    try:
+        custom_imports_text = open('scripts/imports.gml').read()
+    except FileNotFoundError:
+        return
 
-    import_texts = ['#' + import_text for import_text in custom_imports_text.split('#') if len(import_text) > 0]
+    import_texts = ['#' + import_text.strip()
+                    for import_text in custom_imports_text.split('#')
+                    if len(import_text.strip()) > 0]
 
     for import_text in import_texts:
         new_dependency = make_dependency(import_text, lib_dependencies)
@@ -201,4 +303,6 @@ def add_custom_dependencies(lib_dependencies):
 def make_dependency(in_gml: str, dependencies=None) -> Dependency:
     if in_gml.startswith(Define.IDENTIFIER_STRING):
         return Define.from_gml(in_gml, dependencies)
+    elif in_gml.startswith(Macro.IDENTIFIER_STRING):
+        return Macro.from_gml(in_gml, dependencies)
     raise ValueError("Given gml doesn't look like a support dependency.")
