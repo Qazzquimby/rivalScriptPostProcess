@@ -1,0 +1,1 @@
+pyinstaller --noconfirm --onefile --console --name "rivals_code_inject"  "D:/Users/User/PycharmProjects/rivalScriptPostProcess/script_process/main.py"
