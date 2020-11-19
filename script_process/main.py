@@ -1,5 +1,5 @@
 import collections
-import os
+import sys
 
 import script_process.dependencies
 import script_process.o_set
@@ -10,8 +10,8 @@ from script_process.log import log
 
 
 class CharacterScriptProcessor:
-    def __init__(self):
-        self.paths_to_scripts = get_paths_to_scripts()
+    def __init__(self, path):
+        self.paths_to_scripts = get_paths_to_scripts(path)
         self.dependencies = merge_dependencies([script.used_dependencies for script in self.paths_to_scripts.values()])
         self.update()
 
@@ -26,10 +26,8 @@ class CharacterScriptProcessor:
                 script.update(dependencies)
 
 
-def get_paths_to_scripts() -> t.Dict[str, Script]:
-    log.debug(f"cwd: {os.getcwd()}")
-
-    paths = glob.glob('scripts/**/*.gml', recursive=True)
+def get_paths_to_scripts(root_path: str) -> t.Dict[str, Script]:
+    paths = glob.glob(f'{root_path}/scripts/**/*.gml', recursive=True)
     for path in paths:
         if path.endswith('imports.gml'):
             paths.remove(path)
@@ -50,5 +48,12 @@ def merge_dependencies(dependency_trees: t.List[t.Dict[str, script_process.depen
 
 if __name__ == '__main__':
     log.info("Starting")
-    CharacterScriptProcessor()
+    path_to_process = sys.argv[1]
+
+    try:
+        CharacterScriptProcessor(path_to_process)
+    except Exception as e:
+        log.error("Failed with following exception")
+        log.error(e, exc_info=True)
+        raise e
     log.info("Finished")
