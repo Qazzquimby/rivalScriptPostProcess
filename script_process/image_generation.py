@@ -16,7 +16,7 @@ class Shape(abc.ABC):
     def save(self, path: str):
         image = self._make_image()
         self._draw_on_image(image)
-        image.save(f'{path}{self.file_name}')
+        image.save(f'{path}/{self.file_name}')
 
     @property
     def file_name(self):
@@ -125,14 +125,14 @@ def make_sprite_for_file_name(sprite_path: str, file_name: str):
     for shape_type in (Circle, Ellipse, Rectangle):
         shape = shape_type.from_file_name(file_name)
         if shape is not None:
-            path = f'{sprite_path}/{file_name}'
+            path = f'{sprite_path}/{file_name}.png'
             if not os.path.exists(path):
                 shape.save(sprite_path)
 
 
 if __name__ == '__main__':
     root_path = sys.argv[1]
-    sprite_path = f'{root_path}/sprites/'
+    sprite_path = f'{root_path}/sprites'
 
     make_sprite_for_file_name(sprite_path, "ellipse_30_30.png")
     make_sprite_for_file_name(sprite_path, "red_ellipse_30_30.png")

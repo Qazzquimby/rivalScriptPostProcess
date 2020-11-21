@@ -12,6 +12,7 @@ from script_process.log import log
 
 class CharacterScriptProcessor:
     def __init__(self, path):
+        self.path = path
         self.paths_to_scripts = get_paths_to_scripts(path)
         self.dependencies = merge_dependencies([script.used_dependencies for script in self.paths_to_scripts.values()])
         self.assets = merge_assets([script.used_assets for script in self.paths_to_scripts.values()])
@@ -28,7 +29,7 @@ class CharacterScriptProcessor:
                 script.update_dependencies(dependencies)
 
         for asset in self.assets:
-            asset.supply()
+            asset.supply(self.path)
 
 
 def get_paths_to_scripts(root_path: str) -> t.Dict[str, Script]:
