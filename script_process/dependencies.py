@@ -7,11 +7,13 @@ import glob
 import inspect
 import textwrap
 import typing as t
+
+import script_process.pattern_matching
 from script_process.log import log
 from script_process.o_set import OrderedSet
 
 
-class Dependency(abc.ABC):
+class GmlDependency(abc.ABC):
     def __init__(self,
                  name: str,
                  depends: t.Optional[OrderedSet],
@@ -32,7 +34,7 @@ class Dependency(abc.ABC):
         return self.name
 
     def __eq__(self, other):
-        return self.name == other.file_name
+        return self.name == other.name
 
     def __hash__(self):
         return hash(self.name)
@@ -41,7 +43,7 @@ class Dependency(abc.ABC):
 ScriptDependencies = t.Dict["Script", OrderedSet]
 
 
-class Define(Dependency):
+class Define(GmlDependency):
     IDENTIFIER_STRING = '#define'
 
     def __init__(
@@ -50,7 +52,7 @@ class Define(Dependency):
             version: int,
             docs: str,
             gml: str,
-            depends: t.List[Dependency] = None,
+            depends: t.List[GmlDependency] = None,
             params: t.List[str] = None,
             script_path: str = None
     ):
@@ -58,7 +60,7 @@ class Define(Dependency):
             name=name,
             depends=depends,
             gml=self._init_gml(name, params, version, docs, gml),
-            use_pattern=fr'(^|\W){name}\(',
+            use_pattern=script_process.pattern_matching.uses_function_pattern(name),
             give_pattern=fr'{self.IDENTIFIER_STRING}(\s)*{name}(\W|$)',
             script_path=script_path
         )
@@ -138,7 +140,7 @@ class Define(Dependency):
         return docs, gml
 
 
-class Macro(Dependency):
+class Macro(GmlDependency):
     IDENTIFIER_STRING = '#macro'
 
     def __init__(
@@ -147,7 +149,7 @@ class Macro(Dependency):
             version: int,
             docs: str,
             gml: str,
-            depends: t.List[Dependency] = None,
+            depends: t.List[GmlDependency] = None,
             params: t.List[str] = None,
             script_path: str = None
     ):
@@ -155,7 +157,7 @@ class Macro(Dependency):
             name=name,
             depends=depends,
             gml=self._init_gml(name, params, version, docs, gml),
-            use_pattern=fr'(^|\W){name}\(',
+            use_pattern=fr'(^|\W){name}',
             give_pattern=fr'{self.IDENTIFIER_STRING}(\s)*{name}(\W|$)',
             script_path=script_path
         )
@@ -235,13 +237,13 @@ class Macro(Dependency):
         return docs, gml
 
 
-class Init(Dependency):
+class Init(GmlDependency):
     def __init__(
             self,
             name: str,
             gml: str,
             docs: str = "",
-            depends: t.List[Dependency] = None,
+            depends: t.List[GmlDependency] = None,
             script_path: str = 'scripts\\init.gml'
     ):
         super().__init__(
@@ -277,7 +279,7 @@ def get_dependencies_from_library():
         plugin_modules = inspect.getmembers(__import__(plugin_import), inspect.ismodule)
         for _, plugin_module in plugin_modules:
             for member in vars(plugin_module).values():
-                if isinstance(member, Dependency):
+                if isinstance(member, GmlDependency):
                     library_members.add(member)
 
     add_custom_dependencies(library_members)
@@ -300,7 +302,7 @@ def add_custom_dependencies(lib_dependencies):
         lib_dependencies.add(new_dependency)
 
 
-def make_dependency(in_gml: str, dependencies=None) -> Dependency:
+def make_dependency(in_gml: str, dependencies=None) -> GmlDependency:
     if in_gml.startswith(Define.IDENTIFIER_STRING):
         return Define.from_gml(in_gml, dependencies)
     elif in_gml.startswith(Macro.IDENTIFIER_STRING):
