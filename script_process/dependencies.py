@@ -40,6 +40,22 @@ class GmlDependency(abc.ABC):
         return hash(self.name)
 
 
+def _init_gml(name, params, version, docs, gml):
+    # todo document behaviour
+    if params is None:
+        params = []
+    if len(params) > 0:
+        param_string = f"({', '.join(params)})"
+    else:
+        param_string = ''
+
+    head = f"{Define.IDENTIFIER_STRING} {name}{param_string}"
+    docs = textwrap.indent(textwrap.dedent(docs), '    // ')
+    gml = textwrap.indent(textwrap.dedent(gml), '    ')
+    final = f"{head} // Version {version}\n{docs}\n{gml}"
+    return textwrap.dedent(final).strip()
+
+
 ScriptDependencies = t.Dict["Script", OrderedSet]
 
 
@@ -59,85 +75,74 @@ class Define(GmlDependency):
         super().__init__(
             name=name,
             depends=depends,
-            gml=self._init_gml(name, params, version, docs, gml),
+            gml=_init_gml(name, params, version, docs, gml),
             use_pattern=script_process.pattern_matching.uses_function_pattern(name),
             give_pattern=fr'{self.IDENTIFIER_STRING}(\s)*{name}(\W|$)',
             script_path=script_path
         )
 
-    @staticmethod
-    def _init_gml(name, params, version, docs, gml):
-        if params is None:
-            params = []
-        if len(params) > 0:
-            param_string = f"({', '.join(params)})"
-        else:
-            param_string = ''
 
-        head = f"{Define.IDENTIFIER_STRING} {name}{param_string}"
-        docs = textwrap.indent(textwrap.dedent(docs), '    // ')
-        gml = textwrap.indent(textwrap.dedent(gml), '    ')
-        final = f"{head} // Version {version}\n{docs}\n{gml}"
-        return textwrap.dedent(final).strip()
+def make_dependency(in_gml: str, dependencies=None):
+    """Deserializes the gml into the correct Dependency subclass"""
+    if dependencies is None:
+        dependencies = []
 
-    @staticmethod
-    def from_gml(in_gml: str, dependencies=None):
-        if dependencies is None:
-            dependencies = []
+    name_params_version, content = in_gml.split('\n', 1)
+    name, params, version = _extract_name_params_version(name_params_version)
 
-        name_params_version, content = in_gml.split('\n', 1)
-        name, params, version = Define._extract_name_params_version(name_params_version)
+    docs, gml = _extract_docs_gml(content)
+    used_dependencies = [dependency for dependency in dependencies if re.search(dependency.use_pattern, gml)]
 
-        docs, gml = Define._extract_docs_gml(content)
-        used_dependencies = [dependency for dependency in dependencies if re.search(dependency.use_pattern, gml)]
+    for dependency_type in (Define, Macro):
+        if in_gml.startswith(dependency_type.IDENTIFIER_STRING):
+            return dependency_type(
+                name=name,
+                params=params,
+                version=version,
+                docs=docs,
+                gml=gml,
+                depends=used_dependencies)
+    raise ValueError("Given gml doesn't look like a support dependency.")
 
-        return Define(
-            name=name,
-            params=params,
-            version=version,
-            docs=docs,
-            gml=gml,
-            depends=used_dependencies)
 
-    @staticmethod
-    def _extract_name_params_version(name_params_version_line: str) -> t.Tuple[str, t.List[str], int]:
-        name_params_version = name_params_version_line.replace(Define.IDENTIFIER_STRING, '').strip()
-        has_version = '//' in name_params_version
-        if has_version:
-            name_params, version_str = [section.strip() for section in name_params_version.split('//')]
-            version = int(re.findall(r'\d+', version_str)[0])
-        else:
-            name_params = name_params_version
-            version = 0
+def _extract_name_params_version(name_params_version_line: str) -> t.Tuple[str, t.List[str], int]:
+    name_params_version = name_params_version_line.replace(Define.IDENTIFIER_STRING, '').strip()
+    has_version = '//' in name_params_version
+    if has_version:
+        name_params, version_str = [section.strip() for section in name_params_version.split('//')]
+        version = int(re.findall(r'\d+', version_str)[0])
+    else:
+        name_params = name_params_version
+        version = 0
 
-        has_params = '(' in name_params
-        if has_params:
-            name, params_str = name_params.split('(')
-            params = params_str.replace(')', '').replace(' ', '').split(',')
-        else:
-            name = name_params
-            params = []
-        return name, params, version
+    has_params = '(' in name_params
+    if has_params:
+        name, params_str = name_params.split('(')
+        params = params_str.replace(')', '').replace(' ', '').split(',')
+    else:
+        name = name_params
+        params = []
+    return name, params, version
 
-    @staticmethod
-    def _extract_docs_gml(docs_gml: str) -> t.Tuple[str, str]:
-        content_lines = docs_gml.split('\n')
-        doc_lines = []
-        gml_lines = []
-        is_docs = True
-        for line in content_lines:
-            if is_docs:
-                if line.replace(' ', '').replace('\t', '').startswith('//'):
-                    line = re.sub(r'//\s*', '', line)
-                    doc_lines.append(line)
-                else:
-                    is_docs = False
-            if not is_docs:
-                gml_lines.append(line)
 
-        docs = '\n'.join(doc_lines)
-        gml = '\n'.join(gml_lines)
-        return docs, gml
+def _extract_docs_gml(docs_gml: str) -> t.Tuple[str, str]:
+    content_lines = docs_gml.split('\n')
+    doc_lines = []
+    gml_lines = []
+    is_docs = True
+    for line in content_lines:
+        if is_docs:
+            if line.replace(' ', '').replace('\t', '').startswith('//'):
+                line = re.sub(r'//\s*', '', line)
+                doc_lines.append(line)
+            else:
+                is_docs = False
+        if not is_docs:
+            gml_lines.append(line)
+
+    docs = '\n'.join(doc_lines)
+    gml = '\n'.join(gml_lines)
+    return docs, gml
 
 
 class Macro(GmlDependency):
@@ -156,85 +161,11 @@ class Macro(GmlDependency):
         super().__init__(
             name=name,
             depends=depends,
-            gml=self._init_gml(name, params, version, docs, gml),
+            gml=_init_gml(name, params, version, docs, gml),
             use_pattern=fr'(^|\W){name}',
             give_pattern=fr'{self.IDENTIFIER_STRING}(\s)*{name}(\W|$)',
             script_path=script_path
         )
-
-    @staticmethod
-    def _init_gml(name, params, version, docs, gml):
-        if params is None:
-            params = []
-        if len(params) > 0:
-            param_string = f"({', '.join(params)})"
-        else:
-            param_string = ''
-
-        head = f"{Define.IDENTIFIER_STRING} {name}{param_string}"
-        docs = textwrap.indent(textwrap.dedent(docs), '    // ')
-        gml = textwrap.indent(textwrap.dedent(gml), '    ')
-        final = f"{head} // Version {version}\n{docs}\n{gml}"
-        return textwrap.dedent(final).strip()
-
-    @staticmethod
-    def from_gml(in_gml: str, dependencies=None):
-        if dependencies is None:
-            dependencies = []
-
-        name_params_version, content = in_gml.split('\n', 1)
-        name, params, version = Define._extract_name_params_version(name_params_version)
-
-        docs, gml = Define._extract_docs_gml(content)
-        used_dependencies = [dependency for dependency in dependencies if re.search(dependency.use_pattern, gml)]
-
-        return Define(
-            name=name,
-            params=params,
-            version=version,
-            docs=docs,
-            gml=gml,
-            depends=used_dependencies)
-
-    @staticmethod
-    def _extract_name_params_version(name_params_version_line: str) -> t.Tuple[str, t.List[str], int]:
-        name_params_version = name_params_version_line.replace(Define.IDENTIFIER_STRING, '').strip()
-        has_version = '//' in name_params_version
-        if has_version:
-            name_params, version_str = [section.strip() for section in name_params_version.split('//')]
-            version = int(re.findall(r'\d+', version_str)[0])
-        else:
-            name_params = name_params_version
-            version = 0
-
-        has_params = '(' in name_params
-        if has_params:
-            name, params_str = name_params.split('(')
-            params = params_str.replace(')', '').replace(' ', '').split(',')
-        else:
-            name = name_params
-            params = []
-        return name, params, version
-
-    @staticmethod
-    def _extract_docs_gml(docs_gml: str) -> t.Tuple[str, str]:
-        content_lines = docs_gml.split('\n')
-        doc_lines = []
-        gml_lines = []
-        is_docs = True
-        for line in content_lines:
-            if is_docs:
-                if line.replace(' ', '').replace('\t', '').startswith('//'):
-                    line = re.sub(r'//\s*', '', line)
-                    doc_lines.append(line)
-                else:
-                    is_docs = False
-            if not is_docs:
-                gml_lines.append(line)
-
-        docs = '\n'.join(doc_lines)
-        gml = '\n'.join(gml_lines)
-        return docs, gml
 
 
 class Init(GmlDependency):
@@ -300,11 +231,3 @@ def add_custom_dependencies(lib_dependencies):
     for import_text in import_texts:
         new_dependency = make_dependency(import_text, lib_dependencies)
         lib_dependencies.add(new_dependency)
-
-
-def make_dependency(in_gml: str, dependencies=None) -> GmlDependency:
-    if in_gml.startswith(Define.IDENTIFIER_STRING):
-        return Define.from_gml(in_gml, dependencies)
-    elif in_gml.startswith(Macro.IDENTIFIER_STRING):
-        return Macro.from_gml(in_gml, dependencies)
-    raise ValueError("Given gml doesn't look like a support dependency.")
