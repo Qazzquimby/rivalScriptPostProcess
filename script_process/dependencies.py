@@ -196,24 +196,37 @@ class Init(GmlDependency):
         return textwrap.dedent(final).strip()
 
 
-@functools.lru_cache()
-def get_dependencies_from_library():
+def _get_plugin_paths():
     project_path = os.getcwd()  # os.path.dirname(os.path.dirname(__file__))
-    log.info(f"Project path: {project_path}")
     sys.path.append(project_path)
-    log.info(f"Sys path: {sys.path}")
     plugin_root = "library"
     plugin_paths = glob.glob(f"{plugin_root}/*.py")
+
+    log.info(f"Project path: {project_path}")
+    log.info(f"Sys path: {sys.path}")
     log.info(f"Plugin paths: {plugin_paths}")
+    return plugin_paths
+
+
+def get_dependencies_from_path(path: str) -> t.Set[GmlDependency]:
+    dependencies_at_path = set()
+    plugin_import = path.replace('.py', '').replace('\\', '.')
+    plugin_modules = inspect.getmembers(__import__(plugin_import), inspect.ismodule)
+    for _, plugin_module in plugin_modules:
+        for member in vars(plugin_module).values():
+            if isinstance(member, GmlDependency):
+                dependencies_at_path.add(member)
+    return dependencies_at_path
+
+
+@functools.lru_cache()
+def get_dependencies_from_library() -> t.Set[GmlDependency]:
+    plugin_paths = _get_plugin_paths()
 
     library_members = set()
     for path in plugin_paths:
-        plugin_import = path.replace('.py', '').replace('\\', '.')
-        plugin_modules = inspect.getmembers(__import__(plugin_import), inspect.ismodule)
-        for _, plugin_module in plugin_modules:
-            for member in vars(plugin_module).values():
-                if isinstance(member, GmlDependency):
-                    library_members.add(member)
+        dependencies_at_path = get_dependencies_from_path(path)
+        library_members.update(dependencies_at_path)
 
     add_custom_dependencies(library_members)
     log.info(f"Library contents: {[member.name for member in library_members]}\n")
