@@ -33,7 +33,8 @@ class Sprite(Asset):
 
     def supply(self, path: str):
         sprite_path = path + '/sprites'
-        script_process.image_generation.make_sprite_for_file_name(sprite_path=sprite_path, file_name=self.asset_string)
+        script_process.image_generation.make_sprite_for_file_name(
+            sprite_path=sprite_path, file_name=self.asset_string)
 
 
 ASSET_TYPES = [Sprite]
