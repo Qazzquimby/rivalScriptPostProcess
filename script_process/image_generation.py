@@ -2,6 +2,7 @@ import abc
 import os
 import sys
 
+import PIL.Image
 from PIL import Image, ImageDraw
 
 
@@ -14,8 +15,9 @@ class Shape(abc.ABC):
         self._color = color
 
     def save(self, path: str):
-        image = self._make_image()
+        image = self._make_half_size_image()
         self._draw_on_image(image)
+        image.resize(size=(self.width, self.height), resample=PIL.Image.NEAREST)
         image.save(f'{path}/{self.file_name}')
 
     @property
@@ -59,8 +61,8 @@ class Shape(abc.ABC):
         else:
             return self._color
 
-    def _make_image(self) -> Image:
-        image = Image.new('RGBA', (self.width, self.height), (0, 0, 0, 0))
+    def _make_half_size_image(self) -> Image:
+        image = Image.new('RGBA', (self.width // 2, self.height // 2), (0, 0, 0, 0))
         return image
 
     def _draw_on_image(self, image: Image):
@@ -78,7 +80,10 @@ class Ellipse(Shape):
         super().__init__(width=width, height=height, color=color)
 
     def _draw_on_canvas(self, canvas: ImageDraw):
-        canvas.ellipse((0, 0, self.width - 1, self.height - 1), fill=self.color)
+        # make half size
+        width = self.width / 2 - 1
+        height = self.height / 2 - 1
+        canvas.ellipse((0, 0, width, height), fill=self.color, outline="black")
 
 
 class Circle(Ellipse):
@@ -110,7 +115,9 @@ class Rectangle(Shape):
         super().__init__(width=width, height=height, color=color)
 
     def _draw_on_canvas(self, canvas: ImageDraw):
-        canvas.rectangle((0, 0, self.width - 1, self.height - 1), fill=self.color)
+        width = self.width / 2 - 1
+        height = self.height / 2 - 1
+        canvas.rectangle((0, 0, width, height), fill=self.color, outline="black")
 
 
 def make_sprite_for_file_name(sprite_path: str, file_name: str):
