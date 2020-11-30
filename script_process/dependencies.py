@@ -40,8 +40,10 @@ class GmlDependency(abc.ABC):
         return hash(self.name)
 
 
-def _init_gml(name, params, version, docs, gml):
-    # todo document behaviour
+def _init_gml(
+        type_id: str, name: str, params: t.List[str], version: int, docs: str, gml: str
+):
+    """Serialize the gml elements into the final gml structure."""
     if params is None:
         params = []
     if len(params) > 0:
@@ -49,7 +51,7 @@ def _init_gml(name, params, version, docs, gml):
     else:
         param_string = ''
 
-    head = f"{Define.IDENTIFIER_STRING} {name}{param_string}"
+    head = f"{type_id} {name}{param_string}"
     docs = textwrap.indent(textwrap.dedent(docs), '    // ')
     gml = textwrap.indent(textwrap.dedent(gml), '    ')
     final = f"{head} // Version {version}\n{docs}\n{gml}"
@@ -75,8 +77,31 @@ class Define(GmlDependency):
         super().__init__(
             name=name,
             depends=depends,
-            gml=_init_gml(name, params, version, docs, gml),
+            gml=_init_gml(self.IDENTIFIER_STRING, name, params, version, docs, gml),
             use_pattern=script_process.pattern_matching.uses_function_pattern(name),
+            give_pattern=fr'{self.IDENTIFIER_STRING}(\s)*{name}(\W|$)',
+            script_path=script_path
+        )
+
+
+class Macro(GmlDependency):
+    IDENTIFIER_STRING = '#macro'
+
+    def __init__(
+            self,
+            name: str,
+            version: int,
+            docs: str,
+            gml: str,
+            depends: t.List[GmlDependency] = None,
+            params: t.List[str] = None,
+            script_path: str = None
+    ):
+        super().__init__(
+            name=name,
+            depends=depends,
+            gml=_init_gml(self.IDENTIFIER_STRING, name, params, version, docs, gml),
+            use_pattern=fr'(^|\W){name}',
             give_pattern=fr'{self.IDENTIFIER_STRING}(\s)*{name}(\W|$)',
             script_path=script_path
         )
@@ -143,29 +168,6 @@ def _extract_docs_gml(docs_gml: str) -> t.Tuple[str, str]:
     docs = '\n'.join(doc_lines)
     gml = '\n'.join(gml_lines)
     return docs, gml
-
-
-class Macro(GmlDependency):
-    IDENTIFIER_STRING = '#macro'
-
-    def __init__(
-            self,
-            name: str,
-            version: int,
-            docs: str,
-            gml: str,
-            depends: t.List[GmlDependency] = None,
-            params: t.List[str] = None,
-            script_path: str = None
-    ):
-        super().__init__(
-            name=name,
-            depends=depends,
-            gml=_init_gml(name, params, version, docs, gml),
-            use_pattern=fr'(^|\W){name}',
-            give_pattern=fr'{self.IDENTIFIER_STRING}(\s)*{name}(\W|$)',
-            script_path=script_path
-        )
 
 
 class Init(GmlDependency):
