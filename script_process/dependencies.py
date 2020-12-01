@@ -150,19 +150,23 @@ def _extract_name_params_version(name_params_version_line: str) -> t.Tuple[str, 
     return name, params, version
 
 
+def _is_documentation_line(line: str) -> bool:
+    return line.replace(' ', '').replace('\t', '').startswith('//')
+
+
+def _remove_documentation_prefix_from_line(line: str) -> str:
+    return re.sub(r'//\s*', '', line)
+
+
 def _extract_docs_gml(docs_gml: str) -> t.Tuple[str, str]:
     content_lines = docs_gml.split('\n')
     doc_lines = []
     gml_lines = []
-    is_docs = True
     for line in content_lines:
-        if is_docs:
-            if line.replace(' ', '').replace('\t', '').startswith('//'):
-                line = re.sub(r'//\s*', '', line)
-                doc_lines.append(line)
-            else:
-                is_docs = False
-        if not is_docs:
+        if not gml_lines and _is_documentation_line(line):
+            line = _remove_documentation_prefix_from_line(line)
+            doc_lines.append(line)
+        else:
             gml_lines.append(line)
 
     docs = '\n'.join(doc_lines)
