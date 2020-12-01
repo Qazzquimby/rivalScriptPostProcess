@@ -2,7 +2,6 @@ import abc
 import os
 import sys
 
-import PIL.Image
 from PIL import Image, ImageDraw
 
 
@@ -17,7 +16,7 @@ class Shape(abc.ABC):
     def save(self, path: str):
         image = self._make_half_size_image()
         self._draw_on_image(image)
-        image.resize(size=(self.width, self.height), resample=PIL.Image.NEAREST)
+        image.resize(size=(self.width, self.height), resample=Image.NEAREST)
         image.save(f'{path}/{self.file_name}')
 
     @property
