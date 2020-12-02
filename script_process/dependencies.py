@@ -196,17 +196,6 @@ def _get_plugin_paths():
     return plugin_paths
 
 
-def get_dependencies_from_path(path: str) -> t.Set[GmlDependency]:
-    dependencies_at_path = set()
-    plugin_import = path.replace('.py', '').replace('\\', '.')
-    plugin_modules = inspect.getmembers(__import__(plugin_import), inspect.ismodule)
-    for _, plugin_module in plugin_modules:
-        for member in vars(plugin_module).values():
-            if isinstance(member, GmlDependency):
-                dependencies_at_path.add(member)
-    return dependencies_at_path
-
-
 @functools.lru_cache()
 def get_dependencies_from_library() -> t.Set[GmlDependency]:
     plugin_paths = _get_plugin_paths()
@@ -219,6 +208,25 @@ def get_dependencies_from_library() -> t.Set[GmlDependency]:
     add_custom_dependencies(library_members)
     log.info(f"Library contents: {[member.name for member in library_members]}\n")
     return library_members
+
+
+def get_dependencies_from_path(path: str) -> t.Set[GmlDependency]:
+    dependencies_at_path = set()
+    plugin_import = path.replace('.py', '').replace('\\', '.')
+    plugin_modules = inspect.getmembers(__import__(plugin_import), inspect.ismodule)
+    for _, plugin_module in plugin_modules:
+        plugin_members = _get_dependencies_from_plugin_module(plugin_module)
+        dependencies_at_path.update(plugin_members)
+
+    return dependencies_at_path
+
+
+def _get_dependencies_from_plugin_module(plugin_module):
+    dependencies = set()
+    for member in vars(plugin_module).values():
+        if isinstance(member, GmlDependency):
+            dependencies.add(member)
+    return dependencies
 
 
 def add_custom_dependencies(lib_dependencies):
