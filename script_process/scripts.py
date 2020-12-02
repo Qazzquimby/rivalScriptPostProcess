@@ -68,15 +68,26 @@ class Script:
         root_path = self.path.split('scripts')[0]
 
         for dependency in script_process.dependencies.get_dependencies_from_library():
-            try:
-                pattern = pattern_getter(dependency)
-                if re.search(pattern, self.code_gml + self.define_gml):
-                    dependencies[self.get_dependency_script(dependency, root_path)].add(dependency)
-                    for further_depend in dependency.depends:
-                        dependencies[self.get_dependency_script(further_depend, root_path)].add(further_depend)
-            except AttributeError:
-                continue
+            self._add_dependency_if_used(
+                dependencies=dependencies, dependency=dependency, pattern_getter=pattern_getter, root_path=root_path)
+
         return dependencies
+
+    def _add_dependency_if_used(
+            self,
+            dependencies: "script_process.dependencies.ScriptDependencies",
+            dependency,
+            pattern_getter,
+            root_path
+    ):
+        try:
+            pattern = pattern_getter(dependency)
+            if re.search(pattern, self.code_gml + self.define_gml):
+                dependencies[self.get_dependency_script(dependency, root_path)].add(dependency)
+                for further_depend in dependency.depends:
+                    dependencies[self.get_dependency_script(further_depend, root_path)].add(further_depend)
+        except AttributeError:
+            pass
 
     def update_dependencies(self, dependencies: script_process.o_set.OrderedSet):
         self._update_dependencies(dependencies)
