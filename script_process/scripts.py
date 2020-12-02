@@ -94,19 +94,11 @@ class Script:
             pass
 
     def update_dependencies(self, dependencies: script_process.o_set.OrderedSet):
-        self._update_dependencies(dependencies)
-
-    def _update_dependencies(self, dependencies: script_process.o_set.OrderedSet):
         dependencies.discard_all(self.given_dependencies[self.path])
         import_code_gml = generate_init_gml(dependencies)
         import_define_gml = generate_define_gml(dependencies)
         new_gml = '\n\n'.join([self.code_gml, import_code_gml, self.define_gml, import_define_gml])
         open(self.path, 'w').write(new_gml)
-
-    def _update_assets(self, assets: t.List[script_process.assets.Asset]):
-        for asset in assets:
-            print(asset)
-        print('debug')  # todo
 
 
 def _list_dependencies(dependencies):
@@ -141,7 +133,3 @@ def generate_gml_for_dependency_type(
         return gml
     else:
         return ''
-
-
-def uses_dependency(gml: str, dependency: script_process.dependencies.GmlDependency) -> bool:
-    return re.search(dependency.use_pattern, gml) is not None
