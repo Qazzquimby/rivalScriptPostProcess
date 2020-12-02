@@ -41,7 +41,12 @@ class GmlDependency(abc.ABC):
 
 
 def _init_gml(
-        type_id: str, name: str, params: t.List[str], version: int, docs: str, gml: str
+        type_id: str,
+        name: str,
+        version: int,
+        docs: str,
+        gml: str,
+        params: t.List[str] = None
 ):
     """Serialize the gml elements into the final gml structure."""
     if params is None:
@@ -61,8 +66,8 @@ def _init_gml(
 ScriptDependencies = t.Dict["Script", OrderedSet]
 
 
-class Define(GmlDependency):
-    IDENTIFIER_STRING = '#define'
+class GmlDeclaration(GmlDependency, abc.ABC):
+    IDENTIFIER_STRING = NotImplemented
 
     def __init__(
             self,
@@ -74,37 +79,30 @@ class Define(GmlDependency):
             params: t.List[str] = None,
             script_path: str = None
     ):
+        gml = _init_gml(
+            type_id=self.IDENTIFIER_STRING,
+            name=name,
+            params=params,
+            version=version,
+            docs=docs,
+            gml=gml)
+
         super().__init__(
             name=name,
             depends=depends,
-            gml=_init_gml(self.IDENTIFIER_STRING, name, params, version, docs, gml),
+            gml=gml,
             use_pattern=script_process.pattern_matching.uses_function_pattern(name),
             give_pattern=fr'{self.IDENTIFIER_STRING}(\s)*{name}(\W|$)',
             script_path=script_path
         )
 
 
-class Macro(GmlDependency):
-    IDENTIFIER_STRING = '#macro'
+class Define(GmlDeclaration):
+    IDENTIFIER_STRING = '#define'
 
-    def __init__(
-            self,
-            name: str,
-            version: int,
-            docs: str,
-            gml: str,
-            depends: t.List[GmlDependency] = None,
-            params: t.List[str] = None,
-            script_path: str = None
-    ):
-        super().__init__(
-            name=name,
-            depends=depends,
-            gml=_init_gml(self.IDENTIFIER_STRING, name, params, version, docs, gml),
-            use_pattern=fr'(^|\W){name}',
-            give_pattern=fr'{self.IDENTIFIER_STRING}(\s)*{name}(\W|$)',
-            script_path=script_path
-        )
+
+class Macro(GmlDeclaration):
+    IDENTIFIER_STRING = '#macro'
 
 
 def make_dependency(in_gml: str, dependencies=None):
