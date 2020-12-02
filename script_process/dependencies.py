@@ -40,29 +40,6 @@ class GmlDependency(abc.ABC):
         return hash(self.name)
 
 
-def _init_gml(
-        type_id: str,
-        name: str,
-        version: int,
-        docs: str,
-        gml: str,
-        params: t.List[str] = None
-):
-    """Serialize the gml elements into the final gml structure."""
-    if params is None:
-        params = []
-    if len(params) > 0:
-        param_string = f"({', '.join(params)})"
-    else:
-        param_string = ''
-
-    head = f"{type_id} {name}{param_string}"
-    docs = textwrap.indent(textwrap.dedent(docs), '    // ')
-    gml = textwrap.indent(textwrap.dedent(gml), '    ')
-    final = f"{head} // Version {version}\n{docs}\n{gml}"
-    return textwrap.dedent(final).strip()
-
-
 ScriptDependencies = t.Dict["Script", OrderedSet]
 
 
@@ -79,13 +56,25 @@ class GmlDeclaration(GmlDependency, abc.ABC):
             params: t.List[str] = None,
             script_path: str = None
     ):
-        gml = _init_gml(
-            type_id=self.IDENTIFIER_STRING,
-            name=name,
-            params=params,
-            version=version,
-            docs=docs,
-            gml=gml)
+        def _init_gml(
+                # type_id: str, name: str, version: int, docs: str, gml: str, params: t.List[str] = None):
+        ):
+            """Serialize the gml elements into the final gml structure."""
+            nonlocal params, docs, gml
+            if params is None:
+                params = []
+            if params:
+                param_string = f"({', '.join(params)})"
+            else:
+                param_string = ''
+
+            head = f"{self.IDENTIFIER_STRING} {name}{param_string}"
+            docs = textwrap.indent(textwrap.dedent(docs), '    // ')
+            gml = textwrap.indent(textwrap.dedent(gml), '    ')
+            final = f"{head} // Version {version}\n{docs}\n{gml}"
+            return textwrap.dedent(final).strip()
+
+        gml = _init_gml()
 
         super().__init__(
             name=name,
