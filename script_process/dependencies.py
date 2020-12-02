@@ -40,9 +40,6 @@ class GmlDependency(abc.ABC):
         return hash(self.name)
 
 
-ScriptDependencies = t.Dict["Script", OrderedSet]
-
-
 class GmlDeclaration(GmlDependency, abc.ABC):
     IDENTIFIER_STRING = NotImplemented
 

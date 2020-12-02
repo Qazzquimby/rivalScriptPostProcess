@@ -8,6 +8,10 @@ import script_process.styling
 import typing as t
 from script_process.log import log
 
+from script_process.o_set import OrderedSet
+
+ScriptDependencies = t.Dict[str, OrderedSet]
+
 if t.TYPE_CHECKING:
     import script_process.dependencies
 
@@ -50,10 +54,10 @@ class Script:
 
         return script_path
 
-    def init_given_dependencies(self) -> "script_process.dependencies.ScriptDependencies":
+    def init_given_dependencies(self) -> ScriptDependencies:
         return self._get_dependencies_that_match_pattern(lambda dependency: dependency.give_pattern)
 
-    def init_used_dependencies(self) -> "script_process.dependencies.ScriptDependencies":
+    def init_used_dependencies(self) -> ScriptDependencies:
         return self._get_dependencies_that_match_pattern(lambda dependency: dependency.use_pattern)
 
     def init_used_assets(self) -> t.List[script_process.assets.Asset]:
@@ -63,7 +67,7 @@ class Script:
             assets += asset_type.get_from_text(self.define_gml)
         return assets
 
-    def _get_dependencies_that_match_pattern(self, pattern_getter) -> "script_process.dependencies.ScriptDependencies":
+    def _get_dependencies_that_match_pattern(self, pattern_getter) -> ScriptDependencies:
         dependencies = collections.defaultdict(script_process.o_set.OrderedSet)
         root_path = self.path.split('scripts')[0]
 
@@ -75,7 +79,7 @@ class Script:
 
     def _add_dependency_if_used(
             self,
-            dependencies: "script_process.dependencies.ScriptDependencies",
+            dependencies: ScriptDependencies,
             dependency,
             pattern_getter,
             root_path
