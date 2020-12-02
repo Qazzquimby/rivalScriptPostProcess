@@ -24,3 +24,7 @@ run_if_exists = Define(
     }""")
 
 # todo update with access to globals if available
+
+DEPENDENCIES = [
+    run_if_exists
+]

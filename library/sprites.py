@@ -89,5 +89,5 @@ lib_get_current_sprite = Define(
 DEPENDENCIES = [
     lib_state_to_sprite_string,
     lib_attack_to_sprite_string,
-
+    lib_get_current_sprite,
 ]
