@@ -132,8 +132,12 @@ def make_sprite_for_file_name(sprite_path: str, file_name: str):
         shape = shape_type.from_file_name(file_name)
         if shape is not None:
             path = f'{sprite_path}/{file_name}.png'
-            if not os.path.exists(path):
-                shape.save(sprite_path)
+            _save_shape_if_not_exists(shape, path)
+
+
+def _save_shape_if_not_exists(shape: Shape, path: str):
+    if not os.path.exists(path):
+        shape.save(sprite_path)
 
 
 if __name__ == '__main__':
