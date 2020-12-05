@@ -1,12 +1,12 @@
 import collections
 import sys
+import typing as t
+import glob
 
 import script_process.dependencies
 import script_process.assets
 import script_process.o_set
-import typing as t
 from script_process.scripts import Script
-import glob
 from script_process.log import log
 
 
@@ -14,13 +14,13 @@ class CharacterScriptProcessor:
     def __init__(self, path):
         self.path = path
         self.paths_to_scripts = get_paths_to_scripts(path)
-        self.dependencies = merge_dependencies([script.used_dependencies for script in self.paths_to_scripts.values()])
-        self.assets = merge_assets([script.used_assets for script in self.paths_to_scripts.values()])
-        self.update()
+        self.update_dependencies()
+        self.update_assets()
 
-    def update(self):
-        """Gets dependencies and adds them to the bottom."""
-        for path, dependencies in self.dependencies.items():
+    def update_dependencies(self):
+        """Gets needed dependencies in the path and supplies them."""
+        dependencies = merge_dependencies([script.used_dependencies for script in self.paths_to_scripts.values()])
+        for path, dependencies in dependencies.items():
             try:
                 self.paths_to_scripts[path].update_dependencies(dependencies)
             except KeyError:
@@ -28,7 +28,10 @@ class CharacterScriptProcessor:
                 script = Script(path)
                 script.update_dependencies(dependencies)
 
-        for asset in self.assets:
+    def update_assets(self):
+        """Gets needed assets in the path and supplies them."""
+        assets = merge_assets([script.used_assets for script in self.paths_to_scripts.values()])
+        for asset in assets:
             asset.supply(self.path)
 
 
