@@ -21,23 +21,37 @@ def get_sprite_name(sprite_path):
 class SpriteOffsetDependency(GmlDependency):
     def __init__(self, path: str):
         sprite_name = get_sprite_name(path)
-        name = f"{sprite_name}_offset"
-        gml = self._get_offset_gml(path)
+        name = f"{remove_strip_length_from_name(sprite_name)}_offset"
+        gml = _get_offset_gml(path)
         super().__init__(name, gml)
 
-    def _get_offset_gml(self, path):
-        sprite_name = get_sprite_name(path)
-        offsets = self._calculate_offsets(path)
-        return f"sprite_change_offset({sprite_name}, {offsets[0]}, {offsets[1]});"
 
-    def _calculate_offsets(self, path: str) -> t.Tuple[int, int]:
-        # sprite_name = get_sprite_name(path)
-        # todo make this work for sprite sheets
+def _get_offset_gml(path):
+    sprite_name = get_sprite_name(path)
+    offsets = _calculate_offsets(path)
+    return f"sprite_change_offset({remove_strip_length_from_name(sprite_name)}, {offsets[0]}, {offsets[1]});"
 
-        image = Image.open(path)
 
-        height = image.height
+def _calculate_offsets(path: str) -> t.Tuple[int, int]:
+    image = Image.open(path)
+    height = image.height
 
-        strip_width = image.width
+    strip_width = image.width
+    strip_frames = _get_frames_in_strip(path)
+    width = strip_width / strip_frames
 
-        return height // 2, strip_width // 2
+    # todo, height should be the distance from the top to the lowest pixel(?)
+
+    return int(height // 2), int(width // 2)
+
+
+def remove_strip_length_from_name(name):
+    return name.split('_strip')[0]
+
+
+def _get_frames_in_strip(path: str):
+    try:
+        length_str = path.split('strip')[-1].split('.png')[0]
+        return int(length_str)
+    except (IndexError, ValueError):
+        return 1
