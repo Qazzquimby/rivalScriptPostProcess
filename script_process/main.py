@@ -5,8 +5,9 @@ import glob
 
 import script_process.dependencies
 import script_process.assets
+import script_process.sprite_offsets
 import script_process.o_set
-from script_process.scripts import Script
+import script_process.scripts as scripts
 from script_process.log import log
 
 
@@ -14,8 +15,9 @@ class CharacterScriptProcessor:
     def __init__(self, path):
         self.path = path
         self.paths_to_scripts = get_paths_to_scripts(path)
-        self.update_dependencies()
+
         self.update_assets()
+        self.update_dependencies()
 
     def update_dependencies(self):
         """Gets needed dependencies in the path and supplies them."""
@@ -25,7 +27,7 @@ class CharacterScriptProcessor:
                 self.paths_to_scripts[path].update_dependencies(dependencies)
             except KeyError:
                 open(path, 'w+')  # makes empty file
-                script = Script(path)
+                script = script_process.scripts.make_script(path)
                 script.update_dependencies(dependencies)
 
     def update_assets(self):
@@ -35,7 +37,7 @@ class CharacterScriptProcessor:
             asset.supply(self.path)
 
 
-def get_paths_to_scripts(root_path: str) -> t.Dict[str, Script]:
+def get_paths_to_scripts(root_path: str) -> t.Dict[str, scripts.Script]:
     paths = glob.glob(f'{root_path}/scripts/**/*.gml', recursive=True)
     for path in paths:
         if path.endswith('imports.gml'):
@@ -43,7 +45,7 @@ def get_paths_to_scripts(root_path: str) -> t.Dict[str, Script]:
         break
     log.debug(f"paths: {paths}\n")
 
-    paths_to_scripts = {path: Script(path) for path in paths}
+    paths_to_scripts = {path: scripts.make_script(path) for path in paths}
     return paths_to_scripts
 
 

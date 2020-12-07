@@ -1,13 +1,15 @@
+import abc
 import collections
+import glob
 import os
+import pathlib
 import re
+import typing as t
 
 import script_process.assets
-import script_process.o_set
-import script_process.styling
-import typing as t
+import script_process.sprite_offsets
+import script_process.paths
 from script_process.log import log
-
 from script_process.o_set import OrderedSet
 
 ScriptDependencies = t.Dict[str, OrderedSet]
@@ -30,9 +32,10 @@ class Script:
     def _init_gml(self) -> t.Tuple[str, str]:
         text = open(self.path, errors='ignore').read()
 
-        headers = (script_process.styling.CODE, script_process.styling.DEFINES_AND_MACROS)
-        for header in headers:
-            pattern = rf"{re.escape(header[0])}(.|\n)*{re.escape(header[1])}"
+        # headers = (CodeDependencyGroup.script_process.styling.CODE, script_process.styling.DEFINES_AND_MACROS)
+        dependency_groups = [CodeDependencyGroup(), DeclarationDependencyGroup()]
+        for dependency_group in dependency_groups:
+            pattern = rf"{re.escape(dependency_group.start_header)}(.|\n)*{re.escape(dependency_group.end_header)}"
             text = re.sub(pattern, '', text)
 
         splits = text.split('#', 1)
@@ -86,7 +89,7 @@ class Script:
     ):
         try:
             pattern = pattern_getter(dependency)
-            if re.search(pattern, self.code_gml + self.define_gml):
+            if pattern is not None and re.search(pattern, self.code_gml + self.define_gml):
                 dependencies[self.get_dependency_script(dependency, root_path)].add(dependency)
                 for further_depend in dependency.depends:
                     dependencies[self.get_dependency_script(further_depend, root_path)].add(further_depend)
@@ -95,41 +98,87 @@ class Script:
 
     def update_dependencies(self, dependencies: script_process.o_set.OrderedSet):
         dependencies.discard_all(self.given_dependencies[self.path])
-        import_code_gml = generate_init_gml(dependencies)
-        import_define_gml = generate_define_gml(dependencies)
-        new_gml = '\n\n'.join([self.code_gml, import_code_gml, self.define_gml, import_define_gml])
+        code_gml = CodeDependencyGroup().generate_gml(dependencies)
+        declaration_gml = DeclarationDependencyGroup().generate_gml(dependencies)
+        parts = [self.code_gml, code_gml, self.define_gml, declaration_gml]
+        new_gml = '\n\n'.join(parts)
         open(self.path, 'w').write(new_gml)
+
+
+class LoadGmlScript(Script):
+    def __init__(self, path: str):
+        super().__init__(path)
+        self.used_dependencies[path].add_all(self.get_missing_offsets())
+
+    def get_missing_offsets(self):
+        missing_offset_sprite_paths = self._get_missing_offset_sprite_paths()
+        sprite_offset_dependencies = [script_process.sprite_offsets.SpriteOffsetDependency(path)
+                                      for path in missing_offset_sprite_paths]
+        return sprite_offset_dependencies
+
+    def _get_missing_offset_sprite_paths(self):
+        root_path = script_process.paths.get_root_path(self.path)
+        sprite_paths = glob.glob(f"{script_process.paths.get_sprite_paths(root_path)}/*.png")
+        missing_offset_sprite_paths = [path for path in sprite_paths
+                                       if not self._is_already_in_load(path)]
+        return missing_offset_sprite_paths
+
+    def _is_already_in_load(self, sprite_path):
+        sprite_name = pathlib.Path(sprite_path).stem
+        pattern = self._supplies_sprite_offset_pattern(sprite_name)
+        return re.match(pattern=pattern, string=self.code_gml)
+
+    def _supplies_sprite_offset_pattern(self, sprite_name):
+        return fr'(^|\W)sprite_change_offset\("{sprite_name}",'
+
+
+def make_script(path: str):
+    """Returns the Script class corresponding to the path"""
+    if path.endswith('load.gml'):
+        cls = LoadGmlScript
+    else:
+        cls = Script
+    return cls(path)
 
 
 def _list_dependencies(dependencies):
     return [(path, [depend.name for depend in depends]) for path, depends in dependencies.items()]
 
 
-def generate_init_gml(dependencies: script_process.o_set.OrderedSet) -> str:
-    return generate_gml_for_dependency_type(
-        dependencies=dependencies,
-        dependency_type=script_process.dependencies.Init,
-        headers=script_process.styling.CODE
-    )
+class DependencyGroup(abc.ABC):
+    header_name: str = NotImplemented
+    dependency_types: t.List[t.Type] = NotImplemented
+
+    @property
+    def start_header(self):
+        return f"// vvv {self.header_name} vvv"
+
+    @property
+    def end_header(self):
+        return f"// ^^^ END: {self.header_name} ^^^"
+
+    def generate_gml(self, dependencies: script_process.o_set.OrderedSet) -> str:
+        dependencies = [dependency for dependency in dependencies
+                        if isinstance(dependency, tuple(self.dependency_types))]
+        if dependencies:
+            contents = '\n\n'.join([depend.gml for depend in dependencies])
+            gml = f"{self.start_header}\n{contents}\n{self.end_header}"
+            return gml
+        else:
+            return ''
 
 
-def generate_define_gml(dependencies: script_process.o_set.OrderedSet) -> str:
-    return generate_gml_for_dependency_type(
-        dependencies=dependencies,
-        dependency_type=script_process.dependencies.Define,
-        headers=script_process.styling.DEFINES_AND_MACROS
-    )
+class CodeDependencyGroup(DependencyGroup):
+    header_name = "LIBRARY CODE"
+    dependency_types = [
+        script_process.dependencies.Init,
+        script_process.sprite_offsets.SpriteOffsetDependency
+    ]
 
 
-def generate_gml_for_dependency_type(
-        dependencies: script_process.o_set.OrderedSet,
-        dependency_type: t.Type[script_process.dependencies.GmlDependency],
-        headers: t.Tuple[str, str]
-) -> str:
-    dependencies = [dependency for dependency in dependencies if isinstance(dependency, dependency_type)]
-    if dependencies:
-        contents = '\n\n'.join([depend.gml for depend in dependencies])
-        gml = f"{headers[0]}\n{contents}\n{headers[1]}"
-        return gml
-    else:
-        return ''
+class DeclarationDependencyGroup(DependencyGroup):
+    header_name = "LIBRARY DEFINES AND MACROS"
+    dependency_types = [
+        script_process.dependencies.Define,
+        script_process.dependencies.Macro
+    ]

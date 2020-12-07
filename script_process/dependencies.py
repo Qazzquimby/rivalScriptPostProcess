@@ -16,10 +16,10 @@ from script_process.o_set import OrderedSet
 class GmlDependency(abc.ABC):
     def __init__(self,
                  name: str,
-                 depends: t.Optional[OrderedSet],
                  gml: str,
-                 use_pattern: str,
-                 give_pattern: str,
+                 depends: t.Optional[OrderedSet] = None,
+                 use_pattern: str = None,
+                 give_pattern: str = None,
                  script_path: str = None):
         self.name = name
         if depends is None:
