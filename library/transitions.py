@@ -7,8 +7,8 @@ set_state = Define(
     docs="""\
     Sets the state to the given state and resets the state timer.""",
     gml="""\
-        state = _new_state;
-        state_timer = 0;""")
+        state = _new_state
+        state_timer = 0""")
 
 set_window = Define(
     name="set_window",

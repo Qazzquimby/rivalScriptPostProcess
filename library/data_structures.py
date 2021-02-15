@@ -1,5 +1,36 @@
 from script_process.dependencies import Define
 
+Array = Define(
+    name="Array",
+    version=0,
+    docs="""\
+    ...args
+    Unpacks the arguments into a new array.
+    """,
+    gml="""\
+    var arr = array_create(argument_count, undefined);
+    for (var i=0; i<argument_count; i+=1){
+        arr[i] = argument[i];
+    }
+    return arr;
+    """
+)
+
+Array_from_list = Define(
+    name="Array_from_list",
+    version=0,
+    params=['list'],
+    docs="""\
+    Creates a new array from the contents of the list. Does not destroy the list.""",
+    gml="""\
+    var arr = array_create(ds_list_size(list), undefined);
+    for (var i=0; i<ds_list_size(list); i+=1){
+        arr[i] = list[|i];
+    }
+    return arr;
+    """
+)
+
 Map = Define(
     name="Map",
     version=0,
