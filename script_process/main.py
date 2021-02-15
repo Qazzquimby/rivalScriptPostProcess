@@ -3,6 +3,7 @@ import sys
 import typing as t
 import glob
 
+import script_process.code_generation
 import script_process.dependencies
 import script_process.assets
 import script_process.sprite_offsets
@@ -16,8 +17,14 @@ class CharacterScriptProcessor:
         self.path = path
         self.paths_to_scripts = get_paths_to_scripts(path)
 
+        self.generate_code()
         self.update_assets()
         self.update_dependencies()
+
+    def generate_code(self):
+        """Replaces code injection seeds with generated code"""
+        for script in self.paths_to_scripts.values():
+            script.code_gml = script_process.code_generation.generate_code(script.code_gml)
 
     def update_dependencies(self):
         """Gets needed dependencies in the path and supplies them."""
@@ -58,9 +65,13 @@ def merge_dependencies(dependency_trees: t.List[t.Dict[str, script_process.depen
 
 
 def merge_assets(assets_for_scripts: t.List[t.List[script_process.assets.Asset]]) -> t.Set[script_process.assets.Asset]:
-    merged_for_scripts = (set(assets_for_script) for assets_for_script in assets_for_scripts)
-    merged = set.union(*merged_for_scripts)
-    return merged
+    merged_for_scripts = [set(assets_for_script) for assets_for_script in assets_for_scripts]
+    if not merged_for_scripts:
+        return set()
+    else:
+        log.debug(f"{merged_for_scripts}=merged_for_scripts")
+        merged = set.union(*merged_for_scripts)
+        return merged
 
 
 if __name__ == '__main__':
